@@ -343,3 +343,156 @@ class ChartBuilder:
         )
 
         return fig
+
+
+# ---------------------------------------------------------------------------
+# Cortado-style Variant Explorer (HTML component)
+# ---------------------------------------------------------------------------
+
+# Vivid color palette for activity chevrons on dark background
+_ACTIVITY_PALETTE = [
+    '#4CAF50', '#2196F3', '#FF9800', '#9C27B0', '#F44336',
+    '#00BCD4', '#FFEB3B', '#E91E63', '#3F51B5', '#009688',
+    '#FF5722', '#8BC34A', '#795548', '#607D8B', '#CDDC39',
+    '#03A9F4', '#673AB7', '#FFC107', '#76FF03', '#FF4081',
+    '#B388FF', '#84FFFF', '#CCFF90', '#FFD180', '#FF80AB',
+]
+
+
+def _text_color_for_bg(hex_color: str) -> str:
+    """Return white or black text depending on background luminance."""
+    h = hex_color.lstrip('#')
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+    return '#111' if luminance > 0.55 else '#fff'
+
+
+def _html_escape(text: str) -> str:
+    return text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;').replace('"', '&quot;')
+
+
+def build_variant_explorer_html(
+    variants_df: pd.DataFrame,
+    max_rows: int = 50,
+) -> tuple:
+    """
+    Build a Cortado-style variant explorer as self-contained HTML.
+
+    Args:
+        variants_df: DataFrame with columns 'variant', 'count', 'percentage'.
+                     variant is a string like "A -> B -> C".
+        max_rows: Maximum number of variant rows to display.
+
+    Returns:
+        Tuple of (html_string, recommended_iframe_height_px).
+    """
+    df = variants_df.head(max_rows)
+
+    # Collect unique activities in order of first appearance
+    all_activities: list[str] = []
+    seen: set[str] = set()
+    for variant_str in df['variant']:
+        for act in str(variant_str).split(' -> '):
+            act = act.strip()
+            if act and act not in seen:
+                all_activities.append(act)
+                seen.add(act)
+
+    color_map = {
+        act: _ACTIVITY_PALETTE[i % len(_ACTIVITY_PALETTE)]
+        for i, act in enumerate(all_activities)
+    }
+
+    # --- Build rows --------------------------------------------------------
+    rows_html_parts = []
+    for i, (_, row) in enumerate(df.iterrows()):
+        activities = [a.strip() for a in str(row['variant']).split(' -> ')]
+        chevrons = []
+        for act in activities:
+            bg = color_map.get(act, '#666')
+            fg = _text_color_for_bg(bg)
+            safe = _html_escape(act)
+            chevrons.append(
+                f'<span class="chv" style="background:{bg};color:{fg}" title="{safe}">{safe}</span>'
+            )
+
+        pct = row['percentage']
+        count = int(row['count'])
+        rows_html_parts.append(
+            f'<div class="vr">'
+            f'<div class="vno">{i + 1}.</div>'
+            f'<div class="vinf"><span class="vp">{pct:.2f}%</span><br>'
+            f'<span class="vc">({count:,})</span></div>'
+            f'<div class="vchv">{"".join(chevrons)}</div>'
+            f'</div>'
+        )
+
+    # --- Legend -------------------------------------------------------------
+    legend_parts = []
+    for act in all_activities:
+        bg = color_map[act]
+        fg = _text_color_for_bg(bg)
+        safe = _html_escape(act)
+        legend_parts.append(
+            f'<span class="lg-it" style="background:{bg};color:{fg}">{safe}</span>'
+        )
+
+    n_activities = len(all_activities)
+    row_h = 38
+    header_h = 40
+    legend_h = 16 + 30 * max(1, (n_activities + 7) // 8)
+    content_h = header_h + len(df) * row_h + legend_h
+    max_h = 640
+    container_h = min(content_h, max_h)
+
+    html = f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><style>
+*{{box-sizing:border-box;margin:0;padding:0}}
+body{{background:transparent;font-family:'Segoe UI',system-ui,-apple-system,sans-serif}}
+
+.ve{{background:#1e1e2e;border-radius:8px;overflow:hidden;display:flex;
+    flex-direction:column;height:{container_h}px}}
+
+.ve-hd{{display:flex;align-items:center;padding:10px 12px;
+    border-bottom:2px solid #333;color:#888;font-size:11px;font-weight:600;
+    text-transform:uppercase;letter-spacing:.5px;background:#1e1e2e;flex-shrink:0}}
+.ve-hd .cn{{width:44px}}.ve-hd .ci{{width:90px}}.ve-hd .cv{{flex:1}}
+
+.ve-sc{{overflow-y:auto;flex:1}}
+
+.vr{{display:flex;align-items:center;padding:5px 12px;
+    border-bottom:1px solid #2a2a3a;min-height:{row_h}px;transition:background .15s}}
+.vr:hover{{background:#2a2a3e}}
+
+.vno{{width:44px;color:#888;font-size:13px;font-weight:500;flex-shrink:0}}
+.vinf{{width:90px;font-size:12px;line-height:1.4;flex-shrink:0}}
+.vp{{font-weight:600;color:#eee}}.vc{{color:#888;font-size:11px}}
+
+.vchv{{flex:1;display:flex;align-items:center;overflow:hidden}}
+
+.chv{{display:inline-flex;align-items:center;justify-content:center;
+    height:26px;min-width:32px;max-width:150px;
+    padding:0 16px 0 18px;font-size:11px;font-weight:500;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    margin-left:-6px;flex-shrink:0;cursor:default;
+    clip-path:polygon(0 0,calc(100% - 10px) 0,100% 50%,calc(100% - 10px) 100%,0 100%,10px 50%)}}
+.chv:first-child{{margin-left:0;padding-left:10px;
+    clip-path:polygon(0 0,calc(100% - 10px) 0,100% 50%,calc(100% - 10px) 100%,0 100%);
+    border-radius:3px 0 0 3px}}
+
+.lg{{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;
+    border-top:2px solid #333;background:#1e1e2e;flex-shrink:0}}
+.lg-it{{display:inline-block;padding:3px 10px;border-radius:4px;
+    font-size:11px;font-weight:500}}
+</style></head><body>
+<div class="ve">
+  <div class="ve-hd">
+    <div class="cn">No.</div><div class="ci">Info</div>
+    <div class="cv">Variant ({n_activities} activities)</div>
+  </div>
+  <div class="ve-sc">{"".join(rows_html_parts)}</div>
+  <div class="lg">{"".join(legend_parts)}</div>
+</div>
+</body></html>"""
+
+    return html, container_h + 16
