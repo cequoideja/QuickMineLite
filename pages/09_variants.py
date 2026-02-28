@@ -57,13 +57,16 @@ col3.metric("Top 5 Coverage", f"{top5_coverage:.1f}%")
 # ---------------------------------------------------------------------------
 st.subheader("Variant Explorer")
 
-max_display = st.slider(
-    "Number of variants to display",
-    min_value=5,
-    max_value=min(total_variants, 100),
-    value=min(total_variants, 30),
-    step=5,
-)
+if total_variants <= 5:
+    max_display = total_variants
+else:
+    max_display = st.slider(
+        "Number of variants to display",
+        min_value=5,
+        max_value=min(total_variants, 100),
+        value=min(total_variants, 30),
+        step=5,
+    )
 
 explorer_html, explorer_height = build_variant_explorer_html(variants_df, max_rows=max_display)
 components.html(explorer_html, height=explorer_height, scrolling=False)
