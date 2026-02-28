@@ -171,6 +171,7 @@ def wrap_svg_interactive(svg_string: str, height: int = 650) -> str:
   #svg-wrapper {{
     position: absolute; top: 0; left: 0;
     transform-origin: 0 0;
+    visibility: hidden;
   }}
   #controls {{
     position: absolute; top: 8px; right: 8px; z-index: 10;
@@ -251,14 +252,20 @@ def wrap_svg_interactive(svg_string: str, height: int = 650) -> str:
   function fitToView() {{
     var cw = container.clientWidth - 16;
     var ch = container.clientHeight - 16;
+    if (cw <= 0 || ch <= 0) return false;
     scale = Math.min(cw / naturalW, ch / naturalH, 2);
     tx = (cw - naturalW * scale) / 2 + 8;
     ty = (ch - naturalH * scale) / 2 + 8;
     applyTransform();
+    wrapper.style.visibility = 'visible';
+    return true;
   }}
 
-  // Auto-fit on load
-  setTimeout(fitToView, 100);
+  // Robust auto-fit: retry until the container has real dimensions
+  (function autoFit(attempt) {{
+    if (fitToView()) return;
+    if (attempt < 20) requestAnimationFrame(function() {{ autoFit(attempt + 1); }});
+  }})(0);
 
   // Button handlers
   document.getElementById('btn-zoomin').addEventListener('click', function() {{
