@@ -102,13 +102,13 @@ with tab_bpmn:
         from viz.process_maps import render_bpmn_interactive, render_bpmn, export_bpmn_xml
 
         with st.spinner("Discovering BPMN model..."):
-            html = render_bpmn_interactive(analyzer.df, height=GRAPH_HEIGHT)
+            html = render_bpmn_interactive(analyzer.log, height=GRAPH_HEIGHT)
         components.html(html, height=GRAPH_HEIGHT + 10, scrolling=False)
 
         # Export buttons
         col_png, col_bpmn = st.columns(2)
         with col_png:
-            png_bytes = render_bpmn(analyzer.df)
+            png_bytes = render_bpmn(analyzer.log)
             st.download_button(
                 "Export PNG",
                 data=png_bytes,
@@ -116,7 +116,7 @@ with tab_bpmn:
                 mime="image/png",
             )
         with col_bpmn:
-            bpmn_xml = export_bpmn_xml(analyzer.df)
+            bpmn_xml = export_bpmn_xml(analyzer.log)
             st.download_button(
                 "Export .bpmn",
                 data=bpmn_xml,
@@ -129,7 +129,7 @@ with tab_bpmn:
             "Install it with: pip install pm4py"
         )
     except Exception as e:
-        st.warning(f"Could not render BPMN model: {e}")
+        st.exception(e)
 
 # ── Petri Net tab ────────────────────────────────────────────────────────────
 with tab_petri:
@@ -137,10 +137,10 @@ with tab_petri:
         from viz.process_maps import render_petri_net_interactive, render_petri_net
 
         with st.spinner("Discovering Petri net..."):
-            html = render_petri_net_interactive(analyzer.df, height=GRAPH_HEIGHT)
+            html = render_petri_net_interactive(analyzer.log, height=GRAPH_HEIGHT)
         components.html(html, height=GRAPH_HEIGHT + 10, scrolling=False)
 
-        png_bytes = render_petri_net(analyzer.df)
+        png_bytes = render_petri_net(analyzer.log)
         st.download_button(
             "Export PNG",
             data=png_bytes,
@@ -153,7 +153,7 @@ with tab_petri:
             "Install it with: pip install pm4py"
         )
     except Exception as e:
-        st.warning(f"Could not render Petri net: {e}")
+        st.exception(e)
 
 # ── Process Tree tab ─────────────────────────────────────────────────────────
 with tab_tree:
@@ -161,10 +161,10 @@ with tab_tree:
         from viz.process_maps import render_process_tree_interactive, render_process_tree
 
         with st.spinner("Discovering process tree..."):
-            html = render_process_tree_interactive(analyzer.df, height=GRAPH_HEIGHT)
+            html = render_process_tree_interactive(analyzer.log, height=GRAPH_HEIGHT)
         components.html(html, height=GRAPH_HEIGHT + 10, scrolling=False)
 
-        png_bytes = render_process_tree(analyzer.df)
+        png_bytes = render_process_tree(analyzer.log)
         st.download_button(
             "Export PNG",
             data=png_bytes,
@@ -177,4 +177,4 @@ with tab_tree:
             "Install it with: pip install pm4py"
         )
     except Exception as e:
-        st.warning(f"Could not render process tree: {e}")
+        st.exception(e)

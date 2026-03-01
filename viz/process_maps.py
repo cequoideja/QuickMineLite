@@ -376,60 +376,61 @@ def render_dfg_interactive(
     return wrap_svg_interactive(svg_string, height)
 
 
-def render_bpmn_interactive(log: pd.DataFrame, height: int = 650) -> str:
+def render_bpmn_interactive(event_log, height: int = 650) -> str:
     """
     Discover a BPMN model and render it as interactive HTML.
 
+    Args:
+        event_log: pm4py EventLog object or DataFrame.
     Returns:
         HTML string for use with streamlit.components.v1.html().
     """
-    from pm4py.algo.discovery.inductive import algorithm as inductive_miner
-    from pm4py.visualization.bpmn import visualizer as bpmn_visualizer
-    from pm4py.objects.conversion.process_tree import converter as pt_converter
+    if isinstance(event_log, pd.DataFrame):
+        event_log = _convert_df_to_event_log(event_log)
 
-    event_log = _convert_df_to_event_log(log)
-    process_tree = inductive_miner.apply(event_log)
-    bpmn_model = pt_converter.apply(
-        process_tree, variant=pt_converter.Variants.TO_BPMN
-    )
+    import pm4py
+    bpmn_model = pm4py.discover_bpmn_inductive(event_log)
+    from pm4py.visualization.bpmn import visualizer as bpmn_visualizer
     gviz = bpmn_visualizer.apply(bpmn_model)
     svg_string = _gviz_to_svg_string(gviz)
     return wrap_svg_interactive(svg_string, height)
 
 
-def render_petri_net_interactive(log: pd.DataFrame, height: int = 650) -> str:
+def render_petri_net_interactive(event_log, height: int = 650) -> str:
     """
     Discover a Petri net and render it as interactive HTML.
 
+    Args:
+        event_log: pm4py EventLog object or DataFrame.
     Returns:
         HTML string for use with streamlit.components.v1.html().
     """
-    from pm4py.algo.discovery.inductive import algorithm as inductive_miner
-    from pm4py.visualization.petri_net import visualizer as pn_visualizer
-    from pm4py.objects.conversion.process_tree import converter as pt_converter
+    if isinstance(event_log, pd.DataFrame):
+        event_log = _convert_df_to_event_log(event_log)
 
-    event_log = _convert_df_to_event_log(log)
-    process_tree = inductive_miner.apply(event_log)
-    petri_net, initial_marking, final_marking = pt_converter.apply(
-        process_tree, variant=pt_converter.Variants.TO_PETRI_NET
-    )
-    gviz = pn_visualizer.apply(petri_net, initial_marking, final_marking)
+    import pm4py
+    net, im, fm = pm4py.discover_petri_net_inductive(event_log)
+    from pm4py.visualization.petri_net import visualizer as pn_visualizer
+    gviz = pn_visualizer.apply(net, im, fm)
     svg_string = _gviz_to_svg_string(gviz)
     return wrap_svg_interactive(svg_string, height)
 
 
-def render_process_tree_interactive(log: pd.DataFrame, height: int = 650) -> str:
+def render_process_tree_interactive(event_log, height: int = 650) -> str:
     """
     Discover a Process Tree and render it as interactive HTML.
 
+    Args:
+        event_log: pm4py EventLog object or DataFrame.
     Returns:
         HTML string for use with streamlit.components.v1.html().
     """
-    from pm4py.algo.discovery.inductive import algorithm as inductive_miner
-    from pm4py.visualization.process_tree import visualizer as pt_visualizer
+    if isinstance(event_log, pd.DataFrame):
+        event_log = _convert_df_to_event_log(event_log)
 
-    event_log = _convert_df_to_event_log(log)
-    process_tree = inductive_miner.apply(event_log)
+    import pm4py
+    process_tree = pm4py.discover_process_tree_inductive(event_log)
+    from pm4py.visualization.process_tree import visualizer as pt_visualizer
     gviz = pt_visualizer.apply(process_tree)
     svg_string = _gviz_to_svg_string(gviz)
     return wrap_svg_interactive(svg_string, height)
@@ -517,32 +518,22 @@ def render_dfg_dot(
 # BPMN rendering
 # ---------------------------------------------------------------------------
 
-def render_bpmn(log: pd.DataFrame) -> bytes:
+def render_bpmn(event_log) -> bytes:
     """
     Discover a BPMN model from an event log and render it as a PNG image.
 
-    Uses the Inductive Miner to discover a process tree, then converts it
-    to a BPMN model for visualization.
-
     Args:
-        log: DataFrame with standard process mining columns
-            (case:concept:name, concept:name, time:timestamp).
+        event_log: pm4py EventLog object or DataFrame.
 
     Returns:
         PNG image data as bytes, suitable for st.image().
     """
-    from pm4py.algo.discovery.inductive import algorithm as inductive_miner
+    if isinstance(event_log, pd.DataFrame):
+        event_log = _convert_df_to_event_log(event_log)
+
+    import pm4py
+    bpmn_model = pm4py.discover_bpmn_inductive(event_log)
     from pm4py.visualization.bpmn import visualizer as bpmn_visualizer
-    from pm4py.objects.conversion.process_tree import converter as pt_converter
-
-    event_log = _convert_df_to_event_log(log)
-
-    # Discover process tree, then convert to BPMN
-    process_tree = inductive_miner.apply(event_log)
-    bpmn_model = pt_converter.apply(
-        process_tree, variant=pt_converter.Variants.TO_BPMN
-    )
-
     gviz = bpmn_visualizer.apply(bpmn_model)
     return _gviz_to_png_bytes(gviz)
 
@@ -551,33 +542,23 @@ def render_bpmn(log: pd.DataFrame) -> bytes:
 # Petri net rendering
 # ---------------------------------------------------------------------------
 
-def render_petri_net(log: pd.DataFrame) -> bytes:
+def render_petri_net(event_log) -> bytes:
     """
     Discover a Petri net from an event log and render it as a PNG image.
 
-    Uses the Inductive Miner to discover a process tree, then converts it
-    to a Petri net (with initial and final markings) for visualization.
-
     Args:
-        log: DataFrame with standard process mining columns
-            (case:concept:name, concept:name, time:timestamp).
+        event_log: pm4py EventLog object or DataFrame.
 
     Returns:
         PNG image data as bytes, suitable for st.image().
     """
-    from pm4py.algo.discovery.inductive import algorithm as inductive_miner
+    if isinstance(event_log, pd.DataFrame):
+        event_log = _convert_df_to_event_log(event_log)
+
+    import pm4py
+    net, im, fm = pm4py.discover_petri_net_inductive(event_log)
     from pm4py.visualization.petri_net import visualizer as pn_visualizer
-    from pm4py.objects.conversion.process_tree import converter as pt_converter
-
-    event_log = _convert_df_to_event_log(log)
-
-    # Discover process tree, then convert to Petri net
-    process_tree = inductive_miner.apply(event_log)
-    petri_net, initial_marking, final_marking = pt_converter.apply(
-        process_tree, variant=pt_converter.Variants.TO_PETRI_NET
-    )
-
-    gviz = pn_visualizer.apply(petri_net, initial_marking, final_marking)
+    gviz = pn_visualizer.apply(net, im, fm)
     return _gviz_to_png_bytes(gviz)
 
 
@@ -585,26 +566,22 @@ def render_petri_net(log: pd.DataFrame) -> bytes:
 # Process Tree rendering
 # ---------------------------------------------------------------------------
 
-def render_process_tree(log: pd.DataFrame) -> bytes:
+def render_process_tree(event_log) -> bytes:
     """
     Discover a Process Tree from an event log and render it as a PNG image.
 
-    Uses the Inductive Miner to discover the process tree directly.
-
     Args:
-        log: DataFrame with standard process mining columns
-            (case:concept:name, concept:name, time:timestamp).
+        event_log: pm4py EventLog object or DataFrame.
 
     Returns:
         PNG image data as bytes, suitable for st.image().
     """
-    from pm4py.algo.discovery.inductive import algorithm as inductive_miner
+    if isinstance(event_log, pd.DataFrame):
+        event_log = _convert_df_to_event_log(event_log)
+
+    import pm4py
+    process_tree = pm4py.discover_process_tree_inductive(event_log)
     from pm4py.visualization.process_tree import visualizer as pt_visualizer
-
-    event_log = _convert_df_to_event_log(log)
-
-    # Discover and visualize process tree
-    process_tree = inductive_miner.apply(event_log)
     gviz = pt_visualizer.apply(process_tree)
     return _gviz_to_png_bytes(gviz)
 
@@ -613,24 +590,20 @@ def render_process_tree(log: pd.DataFrame) -> bytes:
 # BPMN XML export
 # ---------------------------------------------------------------------------
 
-def export_bpmn_xml(log: pd.DataFrame) -> bytes:
+def export_bpmn_xml(event_log) -> bytes:
     """
     Discover a BPMN model from an event log and export it as BPMN 2.0 XML.
 
     Args:
-        log: DataFrame with standard process mining columns.
+        event_log: pm4py EventLog object or DataFrame.
 
     Returns:
         BPMN 2.0 XML data as bytes, suitable for st.download_button().
     """
-    from pm4py.algo.discovery.inductive import algorithm as inductive_miner
-    from pm4py.objects.conversion.process_tree import converter as pt_converter
+    if isinstance(event_log, pd.DataFrame):
+        event_log = _convert_df_to_event_log(event_log)
+
+    import pm4py
+    bpmn_model = pm4py.discover_bpmn_inductive(event_log)
     from pm4py.objects.bpmn.exporter import exporter as bpmn_exporter
-
-    event_log = _convert_df_to_event_log(log)
-    process_tree = inductive_miner.apply(event_log)
-    bpmn_model = pt_converter.apply(
-        process_tree, variant=pt_converter.Variants.TO_BPMN
-    )
-
     return bpmn_exporter.serialize(bpmn_model)
