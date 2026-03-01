@@ -29,22 +29,22 @@ with tab_dfg:
         ["Frequency", "Performance"],
         horizontal=True,
     )
-    threshold = st.slider(
-        "Threshold",
-        min_value=0.0,
-        max_value=1.0,
-        value=0.0,
-        step=0.05,
-        help="Filter out infrequent paths. 0 = show all, 1 = show only the most frequent.",
+    coverage_pct = st.slider(
+        "Path coverage %",
+        min_value=0,
+        max_value=100,
+        value=100,
+        step=5,
+        help="Percentage of paths to keep. 100% = all paths, lower values = only the most frequent paths (simplified view).",
     )
 
     with st.spinner("Discovering DFG..."):
         dfg, start_activities, end_activities = analyzer.discover_dfg()
 
-    # Apply frequency threshold filter
-    if threshold > 0:
+    # Apply frequency filter: keep paths that cover the given percentage
+    if coverage_pct < 100:
         dfg, start_activities, end_activities = analyzer.filter_dfg_by_frequency(
-            dfg, start_activities, end_activities, threshold
+            dfg, start_activities, end_activities, coverage_pct / 100.0
         )
 
     if not dfg:
