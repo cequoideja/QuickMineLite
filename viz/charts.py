@@ -410,10 +410,9 @@ def build_variant_explorer_html(
         chevrons = []
         for act in activities:
             bg = color_map.get(act, '#666')
-            fg = _text_color_for_bg(bg)
             safe = _html_escape(act)
             chevrons.append(
-                f'<span class="chv" style="background:{bg};color:{fg}" title="{safe}">{safe}</span>'
+                f'<span class="chv" style="background:{bg}"><span class="tt">{safe}</span></span>'
             )
 
         pct = row['percentage']
@@ -468,17 +467,21 @@ body{{background:transparent;font-family:'Segoe UI',system-ui,-apple-system,sans
 .vinf{{width:90px;font-size:12px;line-height:1.4;flex-shrink:0}}
 .vp{{font-weight:600;color:#eee}}.vc{{color:#888;font-size:11px}}
 
-.vchv{{flex:1;display:flex;align-items:center;overflow:hidden}}
+.vchv{{flex:1;display:flex;align-items:center;overflow:hidden;flex-wrap:wrap;gap:1px 0}}
 
-.chv{{display:inline-flex;align-items:center;justify-content:center;
-    height:26px;min-width:32px;max-width:150px;
-    padding:0 16px 0 18px;font-size:11px;font-weight:500;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-    margin-left:-6px;flex-shrink:0;cursor:default;
-    clip-path:polygon(0 0,calc(100% - 10px) 0,100% 50%,calc(100% - 10px) 100%,0 100%,10px 50%)}}
-.chv:first-child{{margin-left:0;padding-left:10px;
-    clip-path:polygon(0 0,calc(100% - 10px) 0,100% 50%,calc(100% - 10px) 100%,0 100%);
+.chv{{display:inline-block;height:24px;width:28px;
+    margin-left:-6px;flex-shrink:0;cursor:default;position:relative;
+    clip-path:polygon(0 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,0 100%,8px 50%)}}
+.chv:first-child{{margin-left:0;
+    clip-path:polygon(0 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,0 100%);
     border-radius:3px 0 0 3px}}
+
+/* Tooltip on hover */
+.chv .tt{{display:none;position:absolute;bottom:110%;left:50%;transform:translateX(-50%);
+    background:#111;color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;
+    white-space:nowrap;z-index:100;pointer-events:none;
+    box-shadow:0 2px 8px rgba(0,0,0,.4)}}
+.chv:hover .tt{{display:block}}
 
 .lg{{display:flex;flex-wrap:wrap;gap:6px;padding:10px 12px;
     border-top:2px solid #333;background:#1e1e2e;flex-shrink:0}}
