@@ -5,6 +5,33 @@ Mis a jour a chaque session de travail.
 
 ---
 
+## 2026-03-01 - Session 3 : variant explorer, export, déploiement Cloud, corrections
+
+### Travail effectué
+
+1. **Variant Explorer style Cortado** : visualisation des variantes en chevrons colorés (HTML/CSS/JS) avec légende, info pourcentage/count, scroll, slider de nombre de variantes
+2. **Export graphes** : boutons PNG pour tous les graphes, export .bpmn XML pour BPMN
+3. **Déploiement Streamlit Cloud** : création repo GitHub, `.gitignore`, `packages.txt` (graphviz), déploiement sur https://quickminelite.streamlit.app/
+4. **Fit-to-view par défaut** : les graphes de processus s'ajustent automatiquement à la vue au chargement (requestAnimationFrame retry loop)
+5. **Fix encodage UTF-8 SVG** : correction de l'affichage des symboles start/end (▶/■) dans les graphes — `atob()` remplacé par `TextDecoder('utf-8')`
+6. **Fix slider DFG** : remplacement du slider "Threshold" (0-1, sans effet) par "Path coverage %" (0-100%, sémantique correcte)
+7. **Fix API pm4py Cloud** : migration des imports bas-niveau (`pm4py.algo.discovery.inductive.algorithm`) vers l'API haut-niveau stable (`pm4py.discover_bpmn_inductive`, etc.) — corrige BPMN/Petri/ProcessTree sur Streamlit Cloud
+8. **Passage event log direct** : les fonctions render acceptent `analyzer.log` directement au lieu de reconvertir `analyzer.df`
+
+### Problèmes rencontrés et solutions
+
+| Problème | Solution |
+|----------|----------|
+| SVG viewport collapse (graphes vides, 0x0) | Parse dimensions SVG (pt→px), set explicit pixel dimensions |
+| `fitToView()` échoue avant dimensions iframe | `requestAnimationFrame` retry loop (20 attempts), `visibility: hidden` jusqu'au fit |
+| Symboles ▶/■ affichés comme "â" + carrés | `atob()` ne gère que Latin-1 ; remplacé par `TextDecoder('utf-8')` |
+| Slider DFG Threshold sans effet visible | Sémantique inversée ; remplacé par "Path coverage %" 0-100% |
+| BPMN/Petri/ProcessTree cassés sur Streamlit Cloud | API pm4py bas-niveau incompatible ; migré vers `pm4py.discover_*` haut-niveau |
+| Double conversion DataFrame→EventLog inutile | Passage de `analyzer.log` direct aux fonctions render |
+| Slider variants crash si < 5 variantes | Condition `if total_variants <= 5` pour afficher toutes les variantes sans slider |
+
+---
+
 ## 2026-02-28 - Session 2 : améliorations UX filtres + graphes interactifs
 
 ### Travail effectué
@@ -134,6 +161,14 @@ Refactoring de **QuickMineAnalytics** v1.0.0, application desktop portable Windo
 28. Correction pourcentage filtré (events + cases)
 29. Graphes de processus interactifs : SVG + JavaScript pan/zoom/fit
 
+### Phase 8 : Variant explorer, export, déploiement Cloud (session 3)
+
+30. Variant Explorer style Cortado (chevrons colorés HTML/CSS)
+31. Export PNG graphes + export .bpmn XML
+32. Déploiement Streamlit Cloud (GitHub + packages.txt)
+33. Fix fit-to-view, encodage UTF-8, slider DFG, API pm4py Cloud
+34. Migration API pm4py vers haut-niveau stable
+
 ---
 
 ## Décisions techniques et architecturales
@@ -206,8 +241,8 @@ Utilisation de l'API `st.navigation()` (Streamlit 1.36+) au lieu de l'ancien sys
 
 | Module | Lignes | Description |
 |--------|--------|-------------|
-| `charts.py` | 345 | ChartBuilder Plotly (bar, pie, heatmap, scatter, box, histogram) |
-| `process_maps.py` | ~360 | Rendu DFG/BPMN/Petri/ProcessTree via pm4py + Graphviz + SVG interactif |
+| `charts.py` | ~500 | ChartBuilder Plotly + Variant Explorer HTML (chevrons Cortado-style) |
+| `process_maps.py` | ~420 | Rendu DFG/BPMN/Petri/ProcessTree via pm4py + Graphviz + SVG interactif + export |
 | `gantt.py` | 213 | Diagramme de Gantt pour les cas |
 
 ### Pages Streamlit
@@ -216,14 +251,14 @@ Utilisation de l'API `st.navigation()` (Streamlit 1.36+) au lieu de l'ancien sys
 |------|--------|-------------|
 | `data_import.py` | 182 | Upload CSV, mapping colonnes, config sampling, classification colonnes |
 | `01_dashboard.py` | 95 | Métriques clés, events over time, activity distribution |
-| `02_process_graph.py` | ~160 | DFG/BPMN/POWL/Petri avec sliders de seuil + zoom/pan/fit interactif |
+| `02_process_graph.py` | ~180 | DFG/BPMN/Petri/ProcessTree avec coverage slider + zoom/pan/fit + export PNG/BPMN |
 | `03_case_explorer.py` | 69 | Liste des cas, détail par cas, Gantt |
 | `04_event_log.py` | 70 | Dataframe paginé avec sélection de colonnes |
 | `05_adhoc_analysis.py` | 195 | Analyse paramétrable + pivot tables |
 | `06_synthesis.py` | 169 | Multi-analyse (stats, corrélations, qualité, variantes, activités) |
 | `07_attribute_changes.py` | 135 | Transitions d'attributs entre événements |
 | `08_bottleneck.py` | 151 | 4 tabs : activité, transition, ressource, cas |
-| `09_variants.py` | 147 | Découverte et comparaison de variantes |
+| `09_variants.py` | ~160 | Variant Explorer Cortado-style + charts + détail + CSV export |
 | `10_ml_predictions.py` | 166 | 3 modèles ML avec entraînement et évaluation |
 
 ### Sidebar (dans `app.py` - 439 lignes)
@@ -280,21 +315,21 @@ Utilisation de l'API `st.navigation()` (Streamlit 1.36+) au lieu de l'ancien sys
 
 ### Points d'attention
 
-- **Pas de contrôle de version** : ni le projet source ni le projet cible ne sont sous git
 - **Tests** : aucun test unitaire ou d'intégration n'a été écrit
 - **launch.bat** : problèmes de PATH Python sur certaines machines Windows (résolu mais non re-testé)
 - **Performance** : la détection Event/Case (`classify_columns`) fait un `groupby().nunique()` qui peut être lent sur des datasets > 1M lignes
 - **DuckDB `register()`** : méthode dépréciée dans DuckDB récent, à migrer vers `conn.register()` ou `conn.sql("CREATE VIEW")`
+- **pm4py compatibilité** : utiliser l'API haut-niveau (`pm4py.discover_*`) plutôt que les imports bas-niveau (`pm4py.algo.discovery.*`) pour la compatibilité Cloud
 
 ### Prochaines étapes envisagées
 
-- [ ] Initialiser un dépôt git et faire un commit initial
+- [x] ~~Initialiser un dépôt git et faire un commit initial~~
+- [x] ~~Déployer sur Streamlit Cloud~~ → https://quickminelite.streamlit.app/
 - [ ] Écrire des tests unitaires (au minimum pour `filter_engine`, `duckdb_manager`, `classify_columns`)
 - [ ] Tester avec des fichiers CSV réels de process mining
 - [ ] Ajouter le support de formats additionnels (XES, .pmfast)
 - [ ] Optimiser `classify_columns` via DuckDB SQL au lieu de pandas groupby
 - [ ] Ajouter un système d'export PDF pour les rapports de synthèse
-- [ ] Déployer sur Streamlit Cloud ou serveur interne
 
 ---
 
@@ -349,7 +384,13 @@ QuickMineLite/
 ├── app.py                        # POINT D'ENTRÉE : navigation, sidebar, filtres, session_state
 ├── launch.bat                    # Lanceur Windows (détection Python, install deps, run)
 ├── requirements.txt              # Dépendances Python
-└── DEVLOG.md                     # Ce fichier
+├── packages.txt                  # Dépendances système Streamlit Cloud (graphviz)
+├── .gitignore                    # Exclusions git (pycache, venv, etc.)
+├── DEVLOG.md                     # Ce fichier
+│
+└── Déploiement :
+    ├── GitHub : https://github.com/cequoideja/QuickMineLite.git
+    └── Streamlit Cloud : https://quickminelite.streamlit.app/
 ```
 
 ### Statistiques du code
