@@ -205,9 +205,10 @@ def wrap_svg_interactive(svg_string: str, height: int = 650) -> str:
 </div>
 <script>
 (function() {{
-  // Decode and inject SVG
+  // Decode and inject SVG (UTF-8 aware base64 decode)
   var svgB64 = "{svg_b64}";
-  var svgText = atob(svgB64);
+  var bytes = Uint8Array.from(atob(svgB64), function(c) {{ return c.charCodeAt(0); }});
+  var svgText = new TextDecoder('utf-8').decode(bytes);
   var wrapper = document.getElementById('svg-wrapper');
   wrapper.innerHTML = svgText;
 
